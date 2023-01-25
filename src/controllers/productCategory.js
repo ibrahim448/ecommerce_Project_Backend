@@ -146,3 +146,123 @@ exports.deleteProduct = async(req,res)=>{
    };
     
 };
+
+
+exports.photo = async(req,res)=>{
+   try {
+
+    const product = await Product.findById(req.params.productId).select("photo");
+    if(product.photo.data){
+        res.set("content-Type", product.photo.contentType);
+        res.send(product.photo.data);
+    }
+    
+   } catch (error) {
+        console.log(error);
+        res.status(400).json(error.message);
+   };
+};
+
+exports.filteredProducts = async (req, res) => {
+    
+    try {
+
+        //filter by category and price
+
+        const {categoryId, productPrice} = req.body;
+        const result = {};
+
+        if(categoryId.length > 0)result.category = categoryId;
+        if(productPrice.length)result.price = {$gte: productPrice[0], $lte: productPrice[1]}
+        
+
+        const product = await Product.find(result)
+        .select("-photo");
+
+        res.json(product)
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json(error.message);
+    };
+
+};
+
+exports.productCount = async(req,res)=>{
+    try {
+
+        const products = await Product.find({}).estimatedDocumentCount();
+
+        res.json(products);
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json(error.message);
+    };
+};
+
+exports.productPagination = async(req,res)=>{
+    try {
+
+        const perpageProduct = 6;
+        const page = req.params.page ? req.params.page : 1;
+
+        const products = await Product.find({})
+        .select("-photo")
+        .skip((page - 1) * perpageProduct)
+        .limit(perpageProduct)
+        .sort({createdAt: -1});
+
+        res.json(products);
+
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json(error.message);
+    };
+};
+
+
+exports.productSearch = async(req,res)=>{
+    try {
+
+        const {keyword} = req.params;
+
+        const product = await Product.find({
+            $or: [
+                {name: {$regex: keyword, $options: "i"}},
+                {description: {$regex: keyword, $options: "i"}},
+            ]
+        })
+        .select("-photo");
+
+        res.json(product);
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json(error.message);
+    };
+};
+
+
+exports.relatedproduct = async(req,res)=>{
+    try {
+
+       const {categoryId, productId} = req.params;
+
+       const product = await Product.find({
+            category: categoryId,
+            _id: {$ne: productId}
+       })
+       .select("-photo")
+       .populate("category")
+       .limit(3)
+       .sort({createdAt: -1});
+
+       res.json(product);
+
+        
+    } catch (error) {
+        console.log(error);
+        return res.status(400).json(error.message);
+    };
+};
